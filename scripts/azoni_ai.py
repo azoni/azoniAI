@@ -1,6 +1,8 @@
-import prompts, open_ai, twitter, database, time
+import prompts, open_ai, twitter, database, time, scheduler
+from activity_log import log_activity
 from collections import Counter
 from textblob import TextBlob  # Simple sentiment analysis
+
 
 def analyze_personality(user_handle):
     """Analyze past tweets and build a personality profile."""
@@ -76,16 +78,49 @@ def generate_personality_based_tweet(user_handle):
     
     return response
 
+def crypto_based_tweet(user_handle):
+    """Generate a tweet that aligns with the user's personality."""
+    personality = analyze_personality(user_handle)
+    
+    topics = ", ".join(topic for topic, _ in personality["topics"])
+    tone = personality["tone"]
+    
+    prompt = f"""
+    You are an AI bot with a unique personality. 
+    Your personality is based on these traits:
+    - Favorite topics: {topics or "random funny topics"}
+    - Tone: {tone} and {personality['sentiment']} sentiment
+    
+    Generate a tweet that expains the current state of solana crypto currency. You should check the price, and give a reflection of events that explain why the price is up or down. It should feel consistent with past tweets.
+    Keep it under 280 characters.
+    """
+    
+    response = response = open_ai.get_open_ai_response(prompt)   
+    
+    return response
+
 def post_tweet(user_handle):
     # tweet_text = generate_fact_check_tweet(user)
-    tweet_text = generate_personality_based_tweet(user_handle)
+    
+    tweet = scheduler.TweetScheduler('azoniAI')
+    category = tweet.get_time_based_category()
+    
+    if category == 'crypto_update':
+        tweet_text = crypto_based_tweet(user_handle)
+        database.save_tweet_to_db(user_handle, tweet_text, 'crypto')
+    else:
+        tweet_text = generate_personality_based_tweet(user_handle)
+        database.save_tweet_to_db(user_handle, tweet_text, 'general')
+        
     twitter.post_tweet(tweet_text)
-    database.save_tweet_to_db(user_handle, tweet_text)
+    log_activity("knowledge_generated", f"Tweet posted: {tweet_text[:80]}")
+    print(tweet_text)
 
 def reply_to_tagged(user_id):
     past_tweets = database.get_past_tweets()
 
     twitter.reply_to_tagged(user_id, past_tweets)
+    log_activity("assistant_chat", f"Replied to tagged user: {user_id}")
 
 def post_reminder():
     #Opensea bot, AI improvements, buy more dogeai, improve website (add project details)
@@ -99,6 +134,7 @@ if __name__ == "__main__":
     user_handle = "azoniNFT"  # Replace with the handle of the account you want to track
     # fetch_and_fact_check_tweets(user_handle)
     post_tweet("AzoniAI")
+
     # while True:
     #     post_tweet()  # Post a tweet
     #     time.sleep(3600)  # Sleep for 1 hour (3600 seconds)
