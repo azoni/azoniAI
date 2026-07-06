@@ -131,7 +131,7 @@ if __name__ == "__main__":
     database.initialize_db()
     #database.recreate_db()
     #database.clear_user_data("AzoniAI")
-    user_handle = "azoniNFT"  # Replace with the handle of the account you want to track
+    user_handle = "azoniTCG"  # Replace with the handle of the account you want to track
     # fetch_and_fact_check_tweets(user_handle)
     post_tweet("AzoniAI")
 
